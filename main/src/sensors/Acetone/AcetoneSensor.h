@@ -10,6 +10,10 @@ public:
     void begin();
     void update();
 
+    float getDelta() const  { return lastDelta; }  // volts away from clean-air baseline
+    bool  isPresent() const { return present; }    // acetone detected
+    bool  isReady() const   { return baseline_done && !calibrating; }
+
 private:
     Adafruit_ADS1115 ads;
 
@@ -21,7 +25,7 @@ private:
     // TO be tuned after seeing noise level in clean air
     static constexpr float THRESH_V = 0.003f; // amount that delta must move away from 0 before it's considered "real event"
     static const int CONFIRM_COUNT = 5;   // requires 5 consecutive hts
-    float recommended_thresh;
+    float recommended_thresh = 0.002f;
 
     // Baseline variables
     float baseline = 0.0f;      // average clean air voltage
@@ -33,11 +37,12 @@ private:
     bool calibrating = true;
     unsigned long calib_start = 0;
     static const unsigned long CALIB_MS = 10000; // 10 second calib
-    float min_delta = 999.0;
-    float max_delta = -999.0;
+    float min_delta = 999.0f;
+    float max_delta = -999.0f;
 
     int hitCount = 0;     // number of hits
     bool present = false; // acetone present
+    float lastDelta = 0.0f;
 
     unsigned long t_start = 0; // acetone sampling time start
     unsigned long t_last = 0;  // acetone sampling time last

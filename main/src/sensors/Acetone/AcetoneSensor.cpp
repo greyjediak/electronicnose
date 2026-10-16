@@ -12,7 +12,7 @@ float AcetoneSensor::readVoltage() {
 }
 
 void AcetoneSensor::resetSession() {
-    t_start = millis();
+  t_start = millis();
   t_last = 0;
 
   baseline = 0.0f;
@@ -26,11 +26,13 @@ void AcetoneSensor::resetSession() {
   max_delta = -999.0f;
 
   hitCount = 0;
+  clearCount = 0;
   present = false;
+  lastDelta = 0.0f;
 }
 
 void AcetoneSensor::begin() {
-    Serial.begin(115200); // baud rate
+  Serial.begin(115200); // baud rate
   delay(1000);
 
   Wire.begin();
@@ -39,7 +41,7 @@ void AcetoneSensor::begin() {
   if (!ads.begin(0x48))
   {
     // Error statement for inaccurate ADC
-     sendLine("ADS1115 not found. Check wiring/address.");
+     sendLine("# ADS1115 not found. Check wiring/address.");
     while(1) {} // Stay here till the ADC is found
   }
 
@@ -48,9 +50,7 @@ void AcetoneSensor::begin() {
 
 void AcetoneSensor::update() {
     if (!sessionStarted) {
-    sendLine("Starting baseline");
-    sendLine("Keep sensor in clean air.");
-    sendLine("t,vdiff,delta,state");
+    sendLine("#Starting baseline, Keep sensor in clean air.");
 
     resetSession();
 
@@ -75,7 +75,7 @@ void AcetoneSensor::update() {
     {
       baseline = baseline_sum / (float)baseline_n; //Compute average of voltage points
       baseline_done = true; // Set baseline flag to true
-      sendLine("BASELINE = " + String(baseline, 4));
+      sendLine("# BASELINE = " + String(baseline, 4));
     }
 
     // Keep printing values while baselining
@@ -85,14 +85,16 @@ void AcetoneSensor::update() {
 
   // DETECTION Phase - Baseline done
   float delta = vdiff - baseline; // in clean air it should be 0
+  lastDelta = delta;
 
   if (calibrating)
   {
     if(calib_start == 0) calib_start = millis();
     if(delta < min_delta) min_delta = delta;
     if(delta > max_delta) max_delta = delta;
-    String msg = String(t_now - t_start) + "ms," + String(vdiff, 4) + ",0,BASE";
-    sendLine(msg);
+
+    //String msg = String(t_now - t_start) + "ms," + String(vdiff, 4) + ",0,BASE";
+    //sendLine(msg);
 
     if (millis() - calib_start >= CALIB_MS)
     {
@@ -126,31 +128,24 @@ void AcetoneSensor::update() {
   if(!present && hitCount >= CONFIRM_COUNT)
   {
     present = true; // update state
-    sendLine("#DETECTED#");
+    clearCount = 0;
+    sendLine("# ACETONE DETECTED");
 
   }
 
   // Hysteresis 
   const float CLEAR_THRESH = recommended_thresh * 0.8f;
-  static int clearCount = 0;
   if (present)
   {
-    if (fabs(delta) < CLEAR_THRESH) clearCount++;
+    if (fabsf(delta) < CLEAR_THRESH) clearCount++;
     else clearCount = 0;
 
     if (clearCount >= 10)
     {
       present = false;
       clearCount = 0;
-      sendLine("#CLEARED#");
+      sendLine("# ACETONE CLEARED");
     }
   }
-
-  // Write CSV ouput
-  String msg = String(vdiff, 3) + "," +
-             String(delta, 3) + "," +
-             String(hitCount) + ",P=" +
-             String(present ? 1 : 0);
-  sendLine(msg);
 
 }

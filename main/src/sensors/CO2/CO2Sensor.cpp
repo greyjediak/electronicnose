@@ -6,7 +6,6 @@
 #undef NO_ERROR
 #endif
 #define NO_ERROR 0
-static char errorMessage[64];
 
 void sendLine(const String &msg)
 {
@@ -32,17 +31,17 @@ void CO2Sensor::begin()
 
     delay(100);
 
-    error = sht4x_sensor.serialNumber(sht4xSerialNumber);
+        error = sht4x_sensor.serialNumber(sht4xSerialNumber);
     if (error == NO_ERROR)
     {
-        sendLine("SHT4x Serial: " + String(sht4xSerialNumber));
+        sendLine("# SHT4x Serial: " + String(sht4xSerialNumber));
     }
-
+ 
     error = stc3x_sensor.getProductId(stc3xProductId, stc3xSerialNumber);
     if (error == NO_ERROR)
     {
-        sendLine("STC3x ID: " + String(stc3xProductId));
-        sendLine("Serial Number: " + String((uint32_t)stc3xSerialNumber));
+        sendLine("# STC3x ID: " + String(stc3xProductId));
+        sendLine("# STC3x Serial: " + String((uint32_t)stc3xSerialNumber));
     }
 
     // Set Binary Gas to Mode 19 (Low-cross-sensitivity for CO2 in Air)
@@ -52,39 +51,34 @@ void CO2Sensor::begin()
 
 void CO2Sensor::update()
 {
-    float stc3xCo2Concentration = 0.0;
-    float stc3xTemperature = 0.0;
-    float sht4xTemperature = 0.0;
-    float sht4xRelativeHumidity = 0.0;
+    if (millis() - lastRead < READ_MS)
+        return;
+    lastRead = millis();
+
+    float co2Pct = 0.0f;
+    float stcTemp = 0.0f;
     int16_t error;
 
-    delay(250); // responsiveness
-
     // Read SHT4x for compensation
-    error = sht4x_sensor.measureHighPrecision(sht4xTemperature, sht4xRelativeHumidity);
+    error = sht4x_sensor.measureHighPrecision(sht4xTemp, sht4xRh);
     if (error == NO_ERROR)
     {
-        stc3x_sensor.setRelativeHumidity(sht4xRelativeHumidity);
-        stc3x_sensor.setTemperature(sht4xTemperature);
+        stc3x_sensor.setRelativeHumidity(sht4xRh);
+        stc3x_sensor.setTemperature(sht4xTemp);
     }
 
     // Measure gas concentration
-    error = stc3x_sensor.measureGasConcentration(stc3xCo2Concentration, stc3xTemperature);
+    error = stc3x_sensor.measureGasConcentration(co2Pct, stcTemp);
     if (error != NO_ERROR)
     {
-        errorToString(error, errorMessage, sizeof errorMessage);
-        sendLine("Error: " + String(errorMessage));
+        //Keep the last good value and dont print into the CSV stream
         return;
     }
 
-    // 2. Calculate Corrected PPM (Relative to baseline)
-    float co2Ppm = stc3xCo2Concentration * 10000.0;
+    co2Ppm = co2Pct * 10000.0f; //convert percentage into ppm
 
-    // 4. Clearance Notification Logic
-    // If gas drops below 500ppm and was previously high
-    float currentCO2 = stc3xCo2Concentration;
-
-    if (currentCO2 <= clearThreshold)
+    //clear detetction goes off if its below the threhold continously for 10 seconds
+    if (co2Pct <= clearThreshold)
     {
         if (!isClearing)
         {
@@ -96,9 +90,7 @@ void CO2Sensor::update()
         // Check if 10,000 milliseconds (10 seconds) have passed
         if (millis() - clearStartTime >= 10000)
         {
-            Serial.println("CHAMBER CONFIRMED CLEAR");
-            // Trigger your next step here (e.g., turn off pump, allow next test)
-            isClearing = false;
+            isClearing = true;
         }
     }
     else
@@ -107,13 +99,8 @@ void CO2Sensor::update()
         if (isClearing)
         {
             isClearing = false;
+            chamberClear = false;
         }
     }
 
-    String dataOutput = "T:" + String(stc3xTemperature, 1);
-    dataOutput += " H:" + String(sht4xRelativeHumidity, 1);
-    dataOutput += " CO2%:" + String(stc3xCo2Concentration, 4);
-    dataOutput += " PPM:" + String(co2Ppm, 0);
-
-    sendLine(dataOutput);
 }

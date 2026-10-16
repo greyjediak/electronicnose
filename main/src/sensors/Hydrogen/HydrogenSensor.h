@@ -8,6 +8,9 @@ class HydrogenSensor {
     void begin();
     void update();
 
+    float getPpm() const { return ppm; }
+    float getVolts() const { return avgVolts; }
+
     private: 
     static const uint8_t  ANALOG_PIN       = A0;     // Defining our analog input pin variable
     static constexpr float    VREF_VOLTS       = 3.3f;   // Defining vref
@@ -17,11 +20,16 @@ class HydrogenSensor {
 
     uint32_t ADC_MAX = (1UL << ADC_BITS) - 1UL; //Defining the max reading from our adc
  
-    float maxRaw  = 0.0;                       //Setting up empty variables to use later in our main loop
-    uint32_t lastPrintMs = 0;
     uint32_t arrayforavg[runtime];
-    float reference = 1.55;
-    uint32_t rawaverage = 0;
+    uint32_t sum = 0;
+    uint32_t idx = 0;
+    uint32_t lastSampleMs = 0;
+
+
+    float reference = 1.55f;
+    float avgRaw = 0.0f;
+    float avgVolts = 0.0f;
+    float ppm = 0.0f;
 
     float VoltsToPPM(float Volts, float reference);
     float rawToVolts(float raw);

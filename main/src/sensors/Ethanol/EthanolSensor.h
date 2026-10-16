@@ -11,6 +11,10 @@ class EthanolSensor {
     void begin();
     void update();
 
+    float getPpm() const { return total; } 
+    float getCurrentPpm() const { return currentPpm; }
+    float getMaxPpm() const { return maxPpm; }
+
     private:
     SensirionI2CSgp40 sgp40;
     SensirionGasIndexAlgorithm voc_algorithm;
@@ -20,11 +24,16 @@ class EthanolSensor {
     uint16_t defaultT = 0x6666;
     uint16_t srawVoc = 0;
     int32_t room = 31500;
+
+    static const int AVG_N = 100;
     int count = 0;
-    float total = 0.0;
-    int time = 0;
-    float ppmAvg[100] = {0.0};
-    float max = 0.0;
+    float total = 0.0f;
+    float ppmAvg[AVG_N] = {0.0f};
+    float currentPpm = 0.0f;
+    float maxPpm = 0.0f;
+
+    unsigned long lastRead = 0;
+    static const unsigned long READ_MS =  100;
 
     void printError(uint16_t error, char* errorMessage);
 };

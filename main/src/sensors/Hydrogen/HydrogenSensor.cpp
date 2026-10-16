@@ -12,93 +12,74 @@ void HydrogenSensor::begin()
     (void)analogRead(ANALOG_PIN); // throw-away read
 
     // And we print out some basic specs, the reference voltage and bit resolution
-    Serial.println(F("nRF52840 A0 Max-Voltage (USB Serial Output)"));
+    /*Serial.println(F("nRF52840 A0 Max-Voltage (USB Serial Output)"));
     Serial.print(F("ADC bits: "));
     Serial.println(ADC_BITS);
     Serial.print(F("Vref: "));
     Serial.print(VREF_VOLTS, 3);
     Serial.println(F(" V"));
     Serial.println(F("Type 'r' + Enter to reset max.\n"));
-}
+    */
+
+    // Prefill the averaging buffer so the average doesn't ramp up from zero
+    uint32_t first = (uint32_t)analogRead(ANALOG_PIN);
+    for (uint32_t i = 0; i < runtime; i++)
+    {
+        arrayforavg[i] = first;
+    }
+    sum = first * runtime;
+    idx = 0;
+ 
+    Serial.print(F("# H2: ADC bits "));
+    Serial.print(ADC_BITS);
+    Serial.print(F(", Vref "));
+    Serial.print(VREF_VOLTS, 3);
+    Serial.println(F(" V. Send 'z' to re-zero the voltage reference."));
+
+    }
 
 void HydrogenSensor::update()
 {
-    // Read and update max
-    int count = 0;
-    float avg = 0.0;
-    // while(count < 500){
-    uint32_t raw = (uint32_t)analogRead(ANALOG_PIN);
-    // if (raw > maxRaw) maxRaw = raw;
-    //  maxRaw = raw;
-    //  avg += static_cast<float>(raw);
-    //  count++;
-    //  delay(2);
-    //}
-    uint32_t oldarray[runtime];
-    for (int i = 0; i < runtime; i++)
-    {
-        oldarray[i] = arrayforavg[i];
-    }
-    for (int i = 0; i < runtime; i++)
-    {
-        if (i == 0)
-            arrayforavg[i] = raw;
-        else
-            arrayforavg[i] = oldarray[i - 1];
-    }
-    for (int i = 0; i < runtime; i++)
-    {
-        avg += arrayforavg[i];
-    }
-    rawaverage = avg / 500.0;
-    maxRaw = rawaverage;
-    // Print periodically to the serial monitor
+    // Sample on a timer instead of delay()
     uint32_t now = millis();
-    // IF the another period has expired
-    if (now - lastPrintMs >= PRINT_PERIOD_MS)
+    if (now - lastSampleMs >= SAMPLE_MS)
     {
-        // THEN we reset the period
-        lastPrintMs = now;
-        // convert our readings to volts and ppm
-        float maxVolts = rawToVolts(maxRaw);
-        float ppm = VoltsToPPM(maxVolts, reference);
-        ppm = 1.0 * ppm;
-        // Then output them to the monitor
-        Serial.print(F("Raw: "));
-        Serial.print(maxRaw);
-        Serial.print(F(" | Volts: "));
-        Serial.print(maxVolts, 4);
-        Serial.print(F(" V"));
-        Serial.print(F(" | PPM: "));
-        Serial.print(ppm, 4);
-        Serial.println(F(" PPM"));
+        lastSampleMs = now;
+ 
+        uint32_t raw = (uint32_t)analogRead(ANALOG_PIN);
+ 
+        // Ring buffer + running sum: O(1) instead of shifting 500 values
+        sum -= arrayforavg[idx];
+        arrayforavg[idx] = raw;
+        sum += raw;
+        idx = (idx + 1) % runtime;
+ 
+        avgRaw = (float)sum / (float)runtime;   // float, no truncation
+        avgVolts = rawToVolts(avgRaw);
+        ppm = VoltsToPPM(avgVolts, reference);
     }
-
-    while (Serial.available()) {
-    int c = Serial.read();
-    if (c == 'r' || c == 'R') {
-      maxRaw = 0;
-      Serial.println(F("[Max reset]"));
+ 
+    // Serial command: 'z' re-zeros the reference to the current average voltage
+    while (Serial.available())
+    {
+        int c = Serial.read();
+        if (c == 'z' || c == 'Z')
+        {
+            reference = avgVolts;
+            Serial.println(F("# [Voltage reference reset]"));
+        }
     }
-    if (c == 'z' || c == 'Z') {
-      float newreference = maxRaw;
-      newreference = rawToVolts(newreference);
-      reference = newreference;
-      Serial.println(F("[Voltage reference reset]"));
-    }
-  }
-
-  // Delay just for good code hygiene, don't wanna overclock our poor mcu
-  delay(2);
 }
-
-float HydrogenSensor::VoltsToPPM(float Volts, float reference) {
-    return(fabs(Volts - reference)/0.002);
+ 
+float HydrogenSensor::VoltsToPPM(float Volts, float reference)
+{
+    return fabsf(Volts - reference) / 0.002f;
 }
-
-float HydrogenSensor::rawToVolts(float raw) {
-    if (raw > ADC_MAX) //defensive clamp
+ 
+float HydrogenSensor::rawToVolts(float raw)
+{
+    if (raw > ADC_MAX) // defensive clamp
         raw = ADC_MAX;
-
-        return (static_cast<float>(raw) * VREF_VOLTS) / static_cast<float>(ADC_MAX);
+ 
+    return (raw * VREF_VOLTS) / static_cast<float>(ADC_MAX);
 }
