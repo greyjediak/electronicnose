@@ -50,7 +50,7 @@ void AcetoneSensor::begin() {
 
 void AcetoneSensor::update() {
     if (!sessionStarted) {
-    sendLine("#Starting baseline, Keep sensor in clean air.");
+    sendLine("# Starting baseline, Keep sensor in clean air.");
 
     resetSession();
 
@@ -103,7 +103,7 @@ void AcetoneSensor::update() {
       recommended_thresh = max(fabs(min_delta), fabs(max_delta)) * 3.0f;
       if (recommended_thresh < 0.002f) recommended_thresh = 0.002f;
 
-      sendLine("calibration complete");
+      sendLine("# calibration complete");
       //msg = "CALIBRATION COMPLETE. Min delta: " + String(min_delta, 8) + 
       //"Max delta " + String(max_delta, 8) + 
       //Serial.print("Center offset: "); Serial.println(center, 8);

@@ -4,6 +4,7 @@
 
 EthanolSensor::EthanolSensor() : voc_algorithm(0) {}
 
+//Can probably remove this, I dont think it has a use
 void EthanolSensor::printError(uint16_t error, char *errorMessage)
 {
     errorToString(error, errorMessage, 256);
@@ -81,9 +82,8 @@ void EthanolSensor::update()
 
     total -= ppmAvg[count];
     ppmAvg[count] = ppm / (float)AVG_N;
-    total += ppmAvg[count++];
-    //or total += ppmAvg[count]
-    //and count = (count + 1) % AVG_N;
+    total += ppmAvg[count];
+    count = (count + 1) % AVG_N;
 
     currentPpm = ppm;
     if (ppm > maxPpm)

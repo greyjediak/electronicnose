@@ -90,7 +90,7 @@ void CO2Sensor::update()
         // Check if 10,000 milliseconds (10 seconds) have passed
         if (millis() - clearStartTime >= 10000)
         {
-            isClearing = true;
+            chamberClear = true;
         }
     }
     else
