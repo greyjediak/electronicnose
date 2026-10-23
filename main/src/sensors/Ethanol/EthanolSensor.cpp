@@ -2,26 +2,8 @@
 #include <Wire.h>
 #include <math.h>
 
-EthanolSensor::EthanolSensor() : voc_algorithm(0) {}
-
-//Can probably remove this, I dont think it has a use
-void EthanolSensor::printError(uint16_t error, char *errorMessage)
-{
-    errorToString(error, errorMessage, 256);
-    Serial.println(errorMessage);
-}
-
 void EthanolSensor::begin()
 {
-    Serial.begin(115200);
-    while (!Serial)
-    {
-        delay(100);
-    }
-    Wire.begin();
-    uint16_t error;
-    char errorMessage[256];
-
     sgp40.begin(Wire);
 
     uint16_t serialNumber[3];
@@ -32,7 +14,6 @@ void EthanolSensor::begin()
     if (error)
     {
         Serial.print("# Error trying to execute getSerialNumber(): ");
-        printError(error, errorMessage);
     }
     else {
         Serial.print("# SGP40 SerialNumber: 0x");
@@ -53,32 +34,31 @@ void EthanolSensor::begin()
     if (error)
     {
         Serial.print("# Error trying to execute executeSelfTest(): ");
-        printError(error, errorMessage);
     }
     else if (testResult != 0xD400)
     {
         Serial.print("# executeSelfTest failed with error: ");
         Serial.println(testResult);
     }
-    GasIndexAlgorithm_init(&params, GasIndexAlgorithm_ALGORITHM_TYPE_VOC);
 }
 
 void EthanolSensor::update()
 {
-    uint16_t error;
-    char errorMessage[256];
+    // Convert deg C / %RH to the SGP40's 16-bit "ticks".
+    float rh = constrain(co2.getHumidity(), 0.0f, 100.0f);  // keep the humidity clamp
+    uint16_t rhTicks   = rh * 65535.0f / 100.0f;
+    uint16_t tempTicks = (co2.getTemperature() + 45.0f) * 65535.0f / 175.0f;
 
     if (millis() - lastRead < READ_MS)
         return;
     lastRead = millis();
 
-    error = sgp40.measureRawSignal(defaultRh, defaultT, srawVoc);
+    error = sgp40.measureRawSignal(rhTicks, tempTicks, srawVoc);
     if (error)
         return;
 
-    int32_t voc_index;
     float x = (float)(room - (int32_t)srawVoc);
-    float ppm = pow(10, (0.000345345 * x));
+    float ppm = powf(10, (0.000345345 * x));
 
     total -= ppmAvg[count];
     ppmAvg[count] = ppm / (float)AVG_N;

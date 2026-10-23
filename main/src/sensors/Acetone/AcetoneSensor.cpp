@@ -32,12 +32,6 @@ void AcetoneSensor::resetSession() {
 }
 
 void AcetoneSensor::begin() {
-  Serial.begin(115200); // baud rate
-  delay(1000);
-
-  Wire.begin();
-  Wire.setClock(400000);
-
   if (!ads.begin(0x48))
   {
     // Error statement for inaccurate ADC

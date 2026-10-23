@@ -7,20 +7,8 @@
 #endif
 #define NO_ERROR 0
 
-void sendLine(const String &msg)
-{
-    Serial.println(msg);
-}
-
 void CO2Sensor::begin()
 {
-    Serial.begin(115200);
-
-    while (!Serial)
-    {
-        delay(100);
-    }
-    Wire.begin();
     stc3x_sensor.begin(Wire, STC31_C_I2C_ADDR_29);
     sht4x_sensor.begin(Wire);
 
@@ -29,19 +17,20 @@ void CO2Sensor::begin()
     uint32_t sht4xSerialNumber = 0;
     int16_t error;
 
-    delay(100);
-
-        error = sht4x_sensor.serialNumber(sht4xSerialNumber);
+    error = sht4x_sensor.serialNumber(sht4xSerialNumber);
     if (error == NO_ERROR)
     {
-        sendLine("# SHT4x Serial: " + String(sht4xSerialNumber));
+        Serial.print("# SHT4x Serial: ");
+        Serial.println(sht4xSerialNumber);
     }
  
     error = stc3x_sensor.getProductId(stc3xProductId, stc3xSerialNumber);
     if (error == NO_ERROR)
     {
-        sendLine("# STC3x ID: " + String(stc3xProductId));
-        sendLine("# STC3x Serial: " + String((uint32_t)stc3xSerialNumber));
+        Serial.print("# STC3x ID: ");
+        Serial.println(stc3xProductId);
+        Serial.print("# STC3x Serial: ");
+        Serial.println((uint32_t)stc3xSerialNumber);
     }
 
     // Set Binary Gas to Mode 19 (Low-cross-sensitivity for CO2 in Air)
@@ -51,12 +40,13 @@ void CO2Sensor::begin()
 
 void CO2Sensor::update()
 {
+    // Non-blocking timer: skip unless READ_MS has passed since the last read.
     if (millis() - lastRead < READ_MS)
         return;
     lastRead = millis();
 
-    float co2Pct = 0.0f;
-    float stcTemp = 0.0f;
+    float co2Pct = 0.0f;    //CO2 percentage
+    float stcTemp = 0.0f;   //stc31-c temp, not used
     int16_t error;
 
     // Read SHT4x for compensation
@@ -82,12 +72,12 @@ void CO2Sensor::update()
     {
         if (!isClearing)
         {
-            // This is the first time it dropped below the threshold
+            //First time a sample appears under threshold start 10s timer
             clearStartTime = millis();
             isClearing = true;
         }
 
-        // Check if 10,000 milliseconds (10 seconds) have passed
+        // Check if 10,000 ms (10 seconds) have passed
         if (millis() - clearStartTime >= 10000)
         {
             chamberClear = true;
