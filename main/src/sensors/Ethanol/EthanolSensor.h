@@ -3,25 +3,23 @@
 
 #include <Arduino.h>
 #include <SensirionI2CSgp40.h>
-#include <SensirionGasIndexAlgorithm.h>
+#include "../CO2/CO2Sensor.h"
 
 class EthanolSensor {
     public:
-    EthanolSensor();
+    //CO2Sensor passed so EthanolSensor can borrow the temp and humidity readings
+    explicit EthanolSensor(const CO2Sensor& co2Sensor) : co2(co2Sensor) {}
     void begin();
     void update();
 
-    float getPpm() const { return total; } 
+    float getPpm() const { return avgPpm; } 
     float getCurrentPpm() const { return currentPpm; }
     float getMaxPpm() const { return maxPpm; }
 
     private:
     SensirionI2CSgp40 sgp40;
-    SensirionGasIndexAlgorithm voc_algorithm;
-    GasIndexAlgorithmParams params;
+    const CO2Sensor&  co2;   // source of temperature / humidity (read-only)
 
-    uint16_t defaultRh = 0x8000;
-    uint16_t defaultT = 0x6666;
     uint16_t srawVoc = 0;
     int32_t room = 31500;
 
@@ -32,10 +30,9 @@ class EthanolSensor {
     float currentPpm = 0.0f;
     float maxPpm = 0.0f;
 
-    unsigned long lastRead = 0;
+    unsigned long lastRead = 0;  //millis() of last SGP40 read
     static const unsigned long READ_MS =  100;
 
-    void printError(uint16_t error, char* errorMessage);
 };
 
 #endif
