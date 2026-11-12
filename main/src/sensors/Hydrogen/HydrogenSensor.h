@@ -12,7 +12,7 @@ class HydrogenSensor {
     float getVolts() const { return avgVolts; }
 
     private: 
-    static const uint8_t  ANALOG_PIN       = A0;     // Defining our analog input pin variable
+    static const uint8_t  ANALOG_PIN       = A3;     // Defining our analog input pin variable
     static constexpr float    VREF_VOLTS       = 3.3f;   // Defining vref
     static const uint8_t  ADC_BITS         = 12;     // Defining our ADC bit resolution
     static const uint32_t  SAMPLE_MS  = 2;       // one ADC sample every 2 ms
@@ -29,7 +29,7 @@ class HydrogenSensor {
     uint32_t lastSampleMs = 0;
 
 
-    float reference = 1.55f;
+    float reference = 0.0f; //change, initially 1.55, then 1.32
     float avgRaw = 0.0f;
     float avgVolts = 0.0f;
     float ppm = 0.0f;

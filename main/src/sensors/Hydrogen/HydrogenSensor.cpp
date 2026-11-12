@@ -24,8 +24,18 @@ void HydrogenSensor::begin()
     {
         samples[i] = first;
     }
-    sum = (unit_32)first * AVG_SAMPLES;
+    sum = (uint32_t)first * AVG_SAMPLES;
     idx = 0;
+
+    // Calculate initial average voltage
+    avgRaw = (float)sum / (float)AVG_SAMPLES;
+    avgVolts = rawToVolts(avgRaw);
+
+    // Automatically zero the sensor at startup
+    reference = avgVolts;
+
+    // Initial PPM should be zero
+    ppm = 0.0f;
  
     Serial.print(F("# H2: ADC bits "));
     Serial.print(ADC_BITS);
@@ -49,7 +59,7 @@ void HydrogenSensor::update()
         sum -= samples[idx];
         samples[idx] = raw;
         sum += raw;
-        idx = (idx + 1) % runtime;
+        idx = (idx + 1) % AVG_SAMPLES;
  
         avgRaw = (float)sum / (float)AVG_SAMPLES;   // float, no truncation
         avgVolts = rawToVolts(avgRaw);
@@ -63,17 +73,21 @@ void HydrogenSensor::update()
         if (c == 'z' || c == 'Z')
         {
             reference = avgVolts;
-            Serial.println(F("# [Voltage reference reset]"));
+            ppm = 0.0f;
+
+            Serial.print(F("# H2 Reference Reset: "));
+            Serial.print(reference, 4);
+            Serial.println(F(" V"));
         }
     }
 }
  
-float HydrogenSensor::VoltsToPPM(float Volts, float reference)
+float HydrogenSensor::VoltsToPPM(float Volts, float reference) const
 {
     return fabsf(Volts - reference) / 0.002f;
 }
  
-float HydrogenSensor::rawToVolts(float raw)
+float HydrogenSensor::rawToVolts(float raw) const
 {
     if (raw > ADC_MAX) // defensive clamp
         raw = ADC_MAX;

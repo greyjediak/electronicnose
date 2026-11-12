@@ -12,7 +12,7 @@ class EthanolSensor {
     void begin();
     void update();
 
-    float getPpm() const { return avgPpm; } 
+    float getPpm() const { return total; } 
     float getCurrentPpm() const { return currentPpm; }
     float getMaxPpm() const { return maxPpm; }
 

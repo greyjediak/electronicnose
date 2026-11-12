@@ -4,6 +4,7 @@
 
 void EthanolSensor::begin()
 {
+    uint16_t error;
     sgp40.begin(Wire);
 
     uint16_t serialNumber[3];
@@ -44,8 +45,10 @@ void EthanolSensor::begin()
 
 void EthanolSensor::update()
 {
+    uint16_t error;
     // Convert deg C / %RH to the SGP40's 16-bit "ticks".
     float rh = constrain(co2.getHumidity(), 0.0f, 100.0f);  // keep the humidity clamp
+    float temp = constrain(co2.getTemperature(), -45.0f, 130.0f);
     uint16_t rhTicks   = rh * 65535.0f / 100.0f;
     uint16_t tempTicks = (co2.getTemperature() + 45.0f) * 65535.0f / 175.0f;
 
