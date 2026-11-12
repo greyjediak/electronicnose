@@ -5,4 +5,6 @@
 *.xlsx
 *.csv
 
+## VSCode Settings
 */.vscode
+*.json
