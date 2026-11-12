@@ -18,10 +18,11 @@
 // ---------------------------------------------------------------------
 //  Sensors
 // ---------------------------------------------------------------------
-// Hydrogen: SGX-H2-1000 analog output
-#define PIN_H2_ANALOG        A3          // = A3
+// Hydrogen input
+#define PIN_H2_ANALOG        A3          // = D3 (H2_Out on schematic)
 
-// All of these share the one I2C bus on D4/D5:
+// I2C Sensors:
+// All share the one I2C bus on D4/D5:
 //   STC31-C  CO2        0x29 (fixed)
 //   SHT41    RH/T       0x44 (fixed)
 //   SGP40    ethanol    0x59 (fixed)
@@ -32,19 +33,46 @@
 
 // ---------------------------------------------------------------------
 //  Display  (ST7789 on hardware SPI: SCK = D8, MOSI = D10)
-//  Panel settings (size, rotation, colors) are in graphics/display_config.h
 // ---------------------------------------------------------------------
-#define PIN_TFT_CS           D1
-#define PIN_TFT_DC           D2
-#define PIN_TFT_RST          -1          // tied to reset; set a pin (e.g. D3) if wired
-#define PIN_TFT_BL           D0          
+// LCD header JLCD1: MISO (pin 5) also goes to D9; CCS (SD card, pin 10) unused.
+#define PIN_TFT_BL           D0          // header pin 11 "Lite"
+#define PIN_TFT_DC           D1          // header pin 9 "D/C"
+#define PIN_TFT_CS           -1          // header pin 7 "TCS" tied to GND (always selected)
+#define PIN_TFT_RST          -1          // not on a GPIO
+
+// For size and color related settings, check the /graphics folder.
 
 // ---------------------------------------------------------------------
-//  User interface  (placeholders -- update to match the wiring)
+//  User interface
 // ---------------------------------------------------------------------
-#define PIN_BUTTON           D6          // to GND, uses INPUT_PULLUP
-#define PIN_BUZZER           D2
+#define PIN_BUTTON           D6          // PTS1 to GND, uses INPUT_PULLUP
+#define PIN_BUZZER           D2          // U11 CPT-7502 beeper
 
-// Free: D7, D9, D11-D19 (back pads)
+// ---------------------------------------------------------------------
+//  Power
+// ---------------------------------------------------------------------
+#define PIN_LOAD_SW          D7          // LD_SW_CTRL -- load switch enable
+
+// Free: D11-D19 (back pads)
+
+// ---------------------------------------------------------------------
+//  Build-time check: fails compilation if two signals share a pin.
+//  Add any new pin to this list. (-1 = not connected, ignored.)
+// ---------------------------------------------------------------------
+namespace pin_check {
+    constexpr int ALL[] = {
+        PIN_H2_ANALOG, PIN_TFT_BL, PIN_TFT_DC, PIN_TFT_CS, PIN_TFT_RST,
+        PIN_BUTTON, PIN_BUZZER, PIN_LOAD_SW,
+        PIN_WIRE_SDA, PIN_WIRE_SCL, PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI
+    };
+    constexpr int N = sizeof(ALL) / sizeof(ALL[0]);
+    constexpr bool dupOf(int i, int j) {
+        return j >= N ? false : ((ALL[i] >= 0 && ALL[i] == ALL[j]) || dupOf(i, j + 1));
+    }
+    constexpr bool anyDup(int i) {
+        return i >= N ? false : (dupOf(i, i + 1) || anyDup(i + 1));
+    }
+    static_assert(!anyDup(0), "pins.h: two signals are assigned the same pin");
+}
 
 #endif

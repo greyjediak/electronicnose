@@ -1,1 +1,8 @@
-## All python testing
+## All python testing, test files
+
+# ignore these files and never commit
+*.py
+*.xlsx
+*.csv
+
+*/.vscode
