@@ -1,5 +1,3 @@
-#include <SensirionI2cSht4x.h>
-
 
 #include "src/sensors/CO2/CO2Sensor.h"
 #include "src/sensors/Hydrogen/HydrogenSensor.h"
@@ -21,20 +19,20 @@ void setup()
 {
     Serial.begin(115200);
 
-    uint32_t t0 = millis();
-    while (!Serial && (millis() - t0) < 2000)
-    {
-        delay(10);
-    }
-
     // Initialize onboard QSPI flash
-    if (logger.begin())
+    bool loggerReady = logger.begin();
+
+    // USB messages are optional
+    if (Serial)
     {
-        Serial.println("# QSPI logger initialized successfully");
-    }
-    else
-    {
-        Serial.println("# ERROR: QSPI logger initialization failed");
+        if (loggerReady)
+        {
+            Serial.println("# QSPI logger initialized successfully");
+        }
+        else
+        {
+            Serial.println("# ERROR: QSPI logger initialization failed");
+        }
     }
 
     Wire.begin();
@@ -46,15 +44,18 @@ void setup()
     acetone.begin();
     ethanol.begin();
 
-    Serial.println("ms,temp_C,rh_pct,co2_ppm,h2_ppm,ethanol_ppm,acetone_dV,acetone_present,acetone_ready,chamber_clear");
+    if (Serial)
+    {
+        Serial.println("ms,temp_C,rh_pct,co2_ppm,h2_ppm,ethanol_ppm,acetone_dV,acetone_present,acetone_ready,chamber_clear");
+    }
 }
 
 
 void loop()
 {
-    // Check for the CSV export command before h2.update()
-    // because the H2 module also reads Serial input.
-    if (Serial.available())
+    // Check for USB export command
+    // This does not affect battery-powered logging.
+    if (Serial && Serial.available())
     {
         char command = Serial.peek();
 
@@ -77,6 +78,7 @@ void loop()
         }
     }
 
+    // Update sensors
     co2.update();
     h2.update();
     acetone.update();
@@ -121,16 +123,24 @@ void loop()
 
         csvRow += String(co2.isChamberClear() ? 1 : 0);
 
-        // Print the row to USB Serial
-        Serial.println(csvRow);
-
-        // Save the same row to onboard QSPI flash
+        // Save readings to onboard QSPI flash
         static bool loggerErrorReported = false;
 
         if (!logger.logLine(csvRow.c_str()) && !loggerErrorReported)
         {
-            Serial.println("# ERROR: Could not save data to QSPI flash");
+            if (Serial)
+            {
+                Serial.println("# ERROR: Could not save data to QSPI flash");
+            }
+
             loggerErrorReported = true;
+        }
+
+        // Print readings only when USB is connected
+        if (Serial)
+        {
+            Serial.println(csvRow);
         }
     }
 }
+
