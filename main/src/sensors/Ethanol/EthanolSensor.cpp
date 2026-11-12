@@ -63,12 +63,17 @@ void EthanolSensor::update()
     float x = (float)(room - (int32_t)srawVoc);
     float ppm = powf(10, (0.000345345 * x));
 
+    // Update the rolling average
     total -= ppmAvg[count];
-    ppmAvg[count] = ppm / (float)AVG_N;
-    total += ppmAvg[count];
-    count = (count + 1) % AVG_N;
 
-    currentPpm = ppm;
-    if (ppm > maxPpm)
-        maxPpm = ppm;
+    ppmAvg[count] = ppm / (float)AVG_N;
+
+    total += ppmAvg[count];
+
+    // Advance to the next array position
+    count++;
+
+    // Wrap around when the array is full
+    if (count >= AVG_N)
+        count = 0;
 }

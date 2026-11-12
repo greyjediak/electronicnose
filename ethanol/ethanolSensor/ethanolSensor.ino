@@ -46,8 +46,6 @@ SensirionGasIndexAlgorithm voc_algorithm(0);
 GasIndexAlgorithmParams params;
 
 
-
-
 void setup() {
     Serial.begin(115200);
     while (!Serial) {
