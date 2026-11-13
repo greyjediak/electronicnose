@@ -5,6 +5,8 @@
 *.xlsx
 *.csv
 
-## VSCode Settings
+
+## VSCode Settings and Specifics
 */.vscode
 *.json
+*.yaml 
