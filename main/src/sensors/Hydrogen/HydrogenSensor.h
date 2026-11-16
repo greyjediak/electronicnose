@@ -29,7 +29,7 @@ class HydrogenSensor {
     uint32_t lastSampleMs = 0;
 
 
-    float reference = 0.0f; //change, initially 1.55, then 1.32
+    float reference = 1.55f; //change, initially 1.55, then 1.32, maybe 0.00
     float avgRaw = 0.0f;
     float avgVolts = 0.0f;
     float ppm = 0.0f;
