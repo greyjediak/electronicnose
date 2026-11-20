@@ -1,7 +1,9 @@
 ## All python testing, test files
 
+
 # ignore these files and never commit
 *.py
+!main/graphics/tools/*.py
 *.xlsx
 *.csv
 
