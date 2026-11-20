@@ -2,6 +2,7 @@
 #define H2_Sensor_H
 
 #include <Arduino.h>
+#include "../../../pins.h"
 
 class HydrogenSensor {
     public:
@@ -12,7 +13,7 @@ class HydrogenSensor {
     float getVolts() const { return avgVolts; }
 
     private: 
-    static const uint8_t  ANALOG_PIN       = A0;     // Defining our analog input pin variable
+    static const uint8_t  ANALOG_PIN       = PIN_H2_ANALOG;  // set in main/pins.h
     static constexpr float    VREF_VOLTS       = 3.3f;   // Defining vref
     static const uint8_t  ADC_BITS         = 12;     // Defining our ADC bit resolution
     static const uint32_t  SAMPLE_MS  = 2;       // one ADC sample every 2 ms

@@ -1,3 +1,4 @@
+#include "pins.h"   // also fails the build on any pin conflict
 #include "src/sensors/CO2/CO2Sensor.h"
 #include "src/sensors/Hydrogen/HydrogenSensor.h"
 #include "src/sensors/Acetone/AcetoneSensor.h"
@@ -19,7 +20,7 @@ void setup () {
     }
 
     Wire.begin();
-    Wire.setClock(400000);   // I2C at 400 kHz (supported by every sensor here)
+    Wire.setClock(I2C_CLOCK_HZ);   // I2C at 400 kHz (supported by every sensor here)
     delay(100);              // give the I2C sensors a moment to finish powering up
 
     warmupDisplay();//needs code
