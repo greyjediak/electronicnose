@@ -1,0 +1,12 @@
+## All python testing, test files
+
+# ignore these files and never commit
+*.py
+*.xlsx
+*.csv
+
+
+## VSCode Settings and Specifics
+*/.vscode
+*.json
+*.yaml 
