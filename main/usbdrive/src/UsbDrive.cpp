@@ -5,6 +5,25 @@
 #include <Adafruit_SPIFlash.h>
 #include <Adafruit_TinyUSB.h>
 
+// on-board flash chip isn't adafruit built in.
+// description here.
+static const SPIFlash_Device_t P25Q16H = {
+    .total_size = (1UL << 21),
+    .start_up_time_us = 10000,
+    .manufacturer_id = 0x85, 
+    .memory_type = 0x60,
+    .capacity = 0x15,
+    .max_clock_speed_mhz = 55,
+    .quad_enable_bit_mask = 0x02,
+    .has_sector_protection = false,
+    .supports_fast_read = true,
+    .supports_qspi = true,
+    .supports_qspi_writes = true,
+    .write_status_register_split = false,
+    .single_status_byte = false,
+    .is_fram = false,
+};
+
 // QSPI pins come from the board variant (on-board P25Q16H, not on headers).
 static Adafruit_FlashTransport_QSPI flashTransport; // 4 wire SPI
 static Adafruit_SPIFlash            flash(&flashTransport); // reads and writes the chip in 512 byte blocks
@@ -40,7 +59,7 @@ namespace UsbDrive {
 // TODO: Call first thing in setup(). Starts flash + USB mass storage.
 // Returns false only if the flash chip didn't respond.
 bool begin() {
-    if (!flash.begin()) {
+    if (!flash.begin(&P25Q16H, 1)) {
         return false;
     }
 
