@@ -12,18 +12,12 @@
 // Native (portrait) resolution of the panel. Common ST7789 sizes:
 //   240x240 (1.3"/1.54"), 240x280 (1.69"), 240x320 (2.0"), 170x320 (1.9")
 #define TFT_WIDTH        240
-#define TFT_HEIGHT       320
-
-// 0 = portrait, 1 = landscape, 2 = portrait flipped, 3 = landscape flipped.
-// Match whatever orientation your Figma frames were drawn in.
-#define TFT_ROTATION     0
-
-// Most ST7789 IPS panels show correct colors with inversion ON (1).
-// If white shows as black and red shows as cyan, flip this to 0.
+#define TFT_HEIGHT       240
+#define TFT_ROTATION     0  // 0 = portrait, 1 = landscape, 2 = portrait flipped, 3 = landscape flipped.
 #define TFT_INVERT       1
+#define TFT_SPI_HZ       8000000UL  // SPI clock. Drop to 8000000 if you see garbage/streaks (long wires).
 
-// SPI clock. Drop to 8000000 if you see garbage/streaks (long wires).
-#define TFT_SPI_HZ       16000000UL
+#define TFT_SPI_MODE     SPI_MODE3
 
 // ---------- Pins ----------
 // Pins live in the shared project pin map: main/pins.h (PIN_TFT_*).
@@ -35,7 +29,9 @@
 
 // ---------- Theme ----------
 // Background used when clearing the screen. RGB565 (0x0000 = black).
-// Should match the background color of your Figma frames.
-#define TFT_BG_COLOR     0x0000
+// Should match the background color of Figma frames.
+// 0x0862 = Figma background #0C0E17. Run png2rgb565.py with --bg 0C0E17
+// so transparent pixels in exports blend into the same color.
+#define TFT_BG_COLOR     0x0862
 
 #endif

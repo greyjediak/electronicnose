@@ -1,8 +1,6 @@
 // The UI code lives in main/src/ui so main.ino can use it too. Arduino only
 // compiles .cpp files inside a sketch's own folder, so this test sketch pulls
 // them in here. Add a line when you add a component or screen file.
-// (They all end up in this one file, so file-level `static` names must be
-// unique across files -- e.g. heatingRing vs baselineRing.)
 
 #include "../src/ui/Gfx.cpp"
 #include "../src/ui/Button.cpp"

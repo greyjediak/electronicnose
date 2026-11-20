@@ -4,7 +4,7 @@
 /* Sensirion STC31-C and Rh/T SHT41 sensors */
 
 #include <Arduino.h>
-#include <SensirionI2CSht4x.h>
+#include <SensirionI2cSht4x.h>
 #include <SensirionI2cStc3x.h>
 
 class CO2Sensor {
@@ -20,7 +20,7 @@ public:
 
 private:
     SensirionI2cStc3x stc3x_sensor;
-    SensirionI2CSht4x sht4x_sensor;
+    SensirionI2cSht4x sht4x_sensor;
 
     float co2Ppm = 0.0f;
 

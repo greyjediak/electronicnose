@@ -6,6 +6,7 @@
 
 struct ImageAsset {
     const char*     name;
+    int16_t         x, y;   // where it goes on the screen
     uint16_t        w, h;
     const uint16_t* data;   // RGB565, row-major
 };

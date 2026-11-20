@@ -42,7 +42,9 @@ void backlight(bool on)
     digitalWrite(TFT_BL, on ? HIGH : LOW);
 }
 
-// ---------- Text ----------
+// =====================================================================
+//  Text
+// =====================================================================
 // The built-in font draws from its top-left corner, so its cursor is shifted
 // up to make "baseline" mean the same thing for both kinds of font.
 static void drawAt(const char* s, int16_t x, int16_t baseline, const GFXfont* f, uint16_t color)
@@ -54,8 +56,9 @@ static void drawAt(const char* s, int16_t x, int16_t baseline, const GFXfont* f,
     tft.print(s);
 }
 
-static void measure(const char* s, const GFXfont* f, int16_t& x1, int16_t& y1, uint16_t& w, uint16_t& h)
+static void measure(const char* s, const GFXfont* f, int16_t& x1, uint16_t& w)
 {
+    int16_t y1; uint16_t h;
     tft.setFont(f);
     tft.setTextSize(1);
     tft.getTextBounds(s, 0, 0, &x1, &y1, &w, &h);
@@ -63,8 +66,8 @@ static void measure(const char* s, const GFXfont* f, int16_t& x1, int16_t& y1, u
 
 int16_t textWidth(const char* s, const GFXfont* f)
 {
-    int16_t x1, y1; uint16_t w, h;
-    measure(s, f, x1, y1, w, h);
+    int16_t x1; uint16_t w;
+    measure(s, f, x1, w);
     return (int16_t)w;
 }
 
@@ -75,77 +78,134 @@ void textLeft(const char* s, int16_t x, int16_t baseline, const GFXfont* f, uint
 
 void textCentered(const char* s, int16_t cx, int16_t baseline, const GFXfont* f, uint16_t color)
 {
-    int16_t x1, y1; uint16_t w, h;
-    measure(s, f, x1, y1, w, h);
+    int16_t x1; uint16_t w;
+    measure(s, f, x1, w);
     drawAt(s, cx - (int16_t)w / 2 - x1, baseline, f, color);
 }
 
 void textRight(const char* s, int16_t right, int16_t baseline, const GFXfont* f, uint16_t color)
 {
-    int16_t x1, y1; uint16_t w, h;
-    measure(s, f, x1, y1, w, h);
+    int16_t x1; uint16_t w;
+    measure(s, f, x1, w);
     drawAt(s, right - (int16_t)w - x1, baseline, f, color);
 }
 
-void textInBox(const char* s, int16_t x, int16_t y, int16_t w, int16_t h,
-               const GFXfont* f, uint16_t color)
+// =====================================================================
+//  Smooth shapes
+//  Each pixel gets a "coverage" 0..1 (how much of it the shape covers) and
+//  is blended with what's around it. That removes the stair-step edges.
+// =====================================================================
+static inline float clamp01(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
+
+uint16_t blend(uint16_t a, uint16_t b, float t)
 {
-    int16_t x1, y1; uint16_t tw, th;
-    measure(s, f, x1, y1, tw, th);
-    tft.setTextColor(color);
-    tft.setCursor(x + (w - (int16_t)tw) / 2 - x1, y + (h - (int16_t)th) / 2 - y1);
-    tft.print(s);
+    if (t <= 0.0f) return a;
+    if (t >= 1.0f) return b;
+    const int ar = a >> 11, ag = (a >> 5) & 0x3F, ab = a & 0x1F;
+    const int br = b >> 11, bg = (b >> 5) & 0x3F, bb = b & 0x1F;
+    const int r = ar + (int)lroundf((br - ar) * t);
+    const int g = ag + (int)lroundf((bg - ag) * t);
+    const int c = ab + (int)lroundf((bb - ab) * t);
+    return (uint16_t)((r << 11) | (g << 5) | c);
 }
 
-// ---------- Building blocks ----------
-void footer(const char* line1, const char* line2)
+// Coverage of a horizontal pill from x0 to x1 (radius r, centered on cy) at point (px, py).
+static float pillCoverage(float px, float py, float x0, float x1, float cy, float r)
 {
-    const int16_t y = tft.height() - theme::FOOTER_H;
-    tft.fillRect(0, y, tft.width(), theme::FOOTER_H, theme::BG);
-    textLeft(line1, theme::MARGIN, y + 10, theme::FONT_TINY, theme::MUTED);
-    if (line2) textLeft(line2, theme::MARGIN, y + 21, theme::FONT_TINY, theme::MUTED);
+    const float sx = constrain(px, x0 + r, x1 - r);   // nearest point on the pill's center line
+    const float dx = px - sx, dy = py - cy;
+    return clamp01(r - sqrtf(dx * dx + dy * dy) + 0.5f);
 }
 
-void bar(int16_t x, int16_t y, int16_t w, int16_t h, float frac, uint16_t fill, uint16_t track)
+void bar(int16_t x, int16_t y, int16_t w, int16_t h, float frac,
+         uint16_t fill, uint16_t track, uint16_t bg)
 {
-    frac = constrain(frac, 0.0f, 1.0f);
-    const int16_t r = h / 2;
-    tft.fillRoundRect(x, y, w, h, r, track);
-    const int16_t fw = (int16_t)(w * frac);
-    if (fw > 0) tft.fillRoundRect(x, y, fw < h ? h : fw, h, r, fill);
-}
+    frac = clamp01(frac);
+    const float r  = h / 2.0f;
+    const float cy = y + r;
+    float fillEnd = x + w * frac;
+    if (frac > 0.0f && fillEnd < x + h) fillEnd = x + h;   // smallest fill is a circle
 
-// Drawn as small quads (two triangles each) every few degrees.
-void arc(int16_t cx, int16_t cy, int16_t r, int16_t thick,
-         float fromDeg, float toDeg, uint16_t color)
-{
-    const float STEP = 4.0f;
-    const int16_t ri = r - thick;
-    for (float a = fromDeg; a < toDeg; a += STEP) {
-        const float b  = fminf(a + STEP + 0.5f, toDeg);    // slight overlap: no pixel gaps
-        const float ra = (a - 90.0f) * DEG_TO_RAD;
-        const float rb = (b - 90.0f) * DEG_TO_RAD;
-        const int16_t x0 = cx + lroundf(r  * cosf(ra)), y0 = cy + lroundf(r  * sinf(ra));
-        const int16_t x1 = cx + lroundf(r  * cosf(rb)), y1 = cy + lroundf(r  * sinf(rb));
-        const int16_t x2 = cx + lroundf(ri * cosf(rb)), y2 = cy + lroundf(ri * sinf(rb));
-        const int16_t x3 = cx + lroundf(ri * cosf(ra)), y3 = cy + lroundf(ri * sinf(ra));
-        tft.fillTriangle(x0, y0, x1, y1, x2, y2, color);
-        tft.fillTriangle(x0, y0, x2, y2, x3, y3, color);
+    uint16_t row[TFT_WIDTH > TFT_HEIGHT ? TFT_WIDTH : TFT_HEIGHT];
+    tft.startWrite();
+    tft.setAddrWindow(x, y, w, h);
+    for (int16_t j = 0; j < h; j++) {
+        const float py = y + j + 0.5f;
+        for (int16_t i = 0; i < w; i++) {
+            const float px = x + i + 0.5f;
+            const float covTrack = pillCoverage(px, py, x, x + w, cy, r);
+            const float covFill  = frac > 0.0f ? pillCoverage(px, py, x, fillEnd, cy, r) : 0.0f;
+            row[i] = blend(bg, blend(track, fill, covFill), covTrack);
+        }
+        tft.writePixels(row, w);
     }
+    tft.endWrite();
 }
 
-// ---------- Figma images ----------
-bool image(const char* name)
+void ringSegment(int16_t cx, int16_t cy, int16_t r, int16_t thick,
+                 float fromDeg, float toDeg, uint16_t color,
+                 uint16_t beforeColor, uint16_t afterColor, uint16_t bg)
+{
+    const float span = toDeg - fromDeg;
+    if (span <= 0.0f) return;
+    const bool  whole  = span >= 359.99f;
+    const float ro = r, ri = r - thick;
+    const float outerSq = (ro + 1) * (ro + 1), innerSq = (ri - 1) * (ri - 1);
+
+    tft.startWrite();
+    for (int16_t y = cy - r - 1; y <= cy + r; y++) {
+        const float dy = y + 0.5f - cy;
+        for (int16_t x = cx - r - 1; x <= cx + r; x++) {
+            const float dx = x + 0.5f - cx;
+            const float dd = dx * dx + dy * dy;
+            if (dd > outerSq || dd < innerSq) continue;           // nowhere near the ring
+            const float d = sqrtf(dd);
+            const float covRing = clamp01(ro - d + 0.5f) - clamp01(ri - d + 0.5f);
+            if (covRing <= 0.0f) continue;
+
+            uint16_t c = color;
+            if (!whole) {
+                // Angle of this pixel, 0 = up, clockwise; position relative to the segment.
+                float a = atan2f(dx, -dy) * RAD_TO_DEG;
+                float rel = fmodf(a - fromDeg + 720.0f, 360.0f);   // 0..360 from the start edge
+                float dFrom, dTo;                                  // degrees inside each edge (negative = outside)
+                if (rel <= span)                              { dFrom = rel;          dTo = span - rel; }
+                else if (rel - span < (360.0f - span) / 2.0f) { dFrom = rel;          dTo = span - rel; }
+                else                                          { dFrom = rel - 360.0f; dTo = span - dFrom; }
+                const float covFrom = clamp01(0.5f + dFrom * DEG_TO_RAD * d);   // degrees -> pixels at this radius
+                const float covTo   = clamp01(0.5f + dTo   * DEG_TO_RAD * d);
+                if (covFrom <= 0.0f || covTo <= 0.0f) continue;
+                c = (covFrom < covTo) ? blend(beforeColor, color, covFrom)
+                                      : blend(afterColor,  color, covTo);
+            }
+            tft.writePixel(x, y, blend(bg, c, covRing));
+        }
+    }
+    tft.endWrite();
+}
+
+// =====================================================================
+//  Figma images (optional)
+// =====================================================================
+static const ImageAsset* findImage(const char* name)
 {
     for (uint8_t i = 0; i < IMAGE_COUNT; i++) {
-        const ImageAsset& img = IMAGES[i];
-        if (strcmp(img.name, name) != 0) continue;
-        if (img.w < tft.width() || img.h < tft.height()) clear();   // not full-screen: clear around it
-        tft.drawRGBBitmap((tft.width() - (int16_t)img.w) / 2, (tft.height() - (int16_t)img.h) / 2,
-                          img.data, img.w, img.h);
-        return true;
+        if (strcmp(IMAGES[i].name, name) == 0) return &IMAGES[i];
     }
-    return false;
+    return nullptr;
+}
+
+bool hasImage(const char* name)
+{
+    return findImage(name) != nullptr;
+}
+
+bool image(const char* name)
+{
+    const ImageAsset* img = findImage(name);
+    if (!img) return false;
+    tft.drawRGBBitmap(img->x, img->y, img->data, img->w, img->h);
+    return true;
 }
 
 }  // namespace gfx

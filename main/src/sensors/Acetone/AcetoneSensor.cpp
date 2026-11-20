@@ -1,6 +1,7 @@
 #include "AcetoneSensor.h"
 #include <math.h>
 #include <Wire.h>
+#include "../../../pins.h"
 
 void AcetoneSensor::sendLine(const String& msg) {
     Serial.println(msg);
@@ -32,7 +33,7 @@ void AcetoneSensor::resetSession() {
 }
 
 void AcetoneSensor::begin() {
-  if (!ads.begin(0x48))
+  if (!ads.begin(I2C_ADDR_ADS1115))
   {
     // Error statement for inaccurate ADC
      sendLine("# ADS1115 not found. Check wiring/address.");

@@ -10,7 +10,7 @@
 void CO2Sensor::begin()
 {
     stc3x_sensor.begin(Wire, STC31_C_I2C_ADDR_29);
-    sht4x_sensor.begin(Wire);
+    sht4x_sensor.begin(Wire, SHT40_I2C_ADDR_44);
 
     uint32_t stc3xProductId = 0;
     uint64_t stc3xSerialNumber = 0;
