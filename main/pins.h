@@ -37,7 +37,7 @@
 // LCD header JLCD1: MISO (pin 5) also goes to D9; CCS (SD card, pin 10) unused.
 #define PIN_TFT_BL           D0          // header pin 11 "Lite"
 #define PIN_TFT_DC           D1          // header pin 9 "D/C"
-#define PIN_TFT_CS           -1          // header pin 7 "TCS" tied to GND (always selected)
+#define PIN_TFT_CS           D2          // header pin 7 "TCS" tied to GND (always selected)
 #define PIN_TFT_RST          -1          // not on a GPIO
 
 // For size and color related settings, check the /graphics folder.
@@ -46,7 +46,7 @@
 //  User interface
 // ---------------------------------------------------------------------
 #define PIN_BUTTON           D6          // PTS1 to GND, uses INPUT_PULLUP
-#define PIN_BUZZER           D2          // U11 CPT-7502 beeper
+#define PIN_BUZZER           -1          // U11 CPT-7502 beeper
 
 // ---------------------------------------------------------------------
 //  Power
